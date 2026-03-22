@@ -163,6 +163,7 @@ All workspaces expose **`build`**, **`dev`**, and **`clean`** (`rimraf dist`). N
 | `pnpm simulate:flows` / `pnpm demo:telegram` | HTTP script: orchestrator → agents (flows A–F) |
 | `pnpm telegram:bot` | Run Telegram bot (real token) or dev simulator (no token) |
 | `pnpm test:mail:latest` | `GET /mail/latest` on mail-agent (headers from env) |
+| `pnpm run prod:build` … `pnpm run prod:health` | Production lifecycle on **Linux** (`ops/wilson.sh`): build, migrate, seed, start/stop/restart, status, health — see **Deploying on a remote Unix server** (section 6) |
 
 ## Deploying on a remote Unix server
 
@@ -263,36 +264,55 @@ cd /opt/wilson   # or your clone path
 docker compose -f infra/docker/docker-compose.yml up -d
 
 pnpm install --frozen-lockfile
-pnpm run build
-pnpm prisma:migrate:deploy
+pnpm run build              # or: pnpm run prod:build
+pnpm prisma:migrate:deploy  # or: pnpm run prod:migrate
 
 # Optional: seed once for demo IDs (not for production tenants)
-# pnpm prisma:seed
+# pnpm prisma:seed          # or: pnpm run prod:seed
 ```
 
 ### 6. Running services in production
 
-Development uses `pnpm dev` and watchers. On a server, run **`pnpm start`** per app (built output) or use a process manager.
+Development uses `pnpm dev` and watchers. On a server, prefer the **production lifecycle scripts** below instead of ad-hoc `nohup` or many parallel `pnpm --filter … start &` shells (which can cause **EADDRINUSE** on the same ports).
 
-**Example: one-off smoke test (same host)**
+**Root commands** (implemented by `ops/wilson.sh`; requires **bash**, **curl**, and **ss** from `iproute2`, as on Ubuntu):
 
-```bash
-export NODE_ENV=production
-pnpm --filter @wilson/task-agent start &
-pnpm --filter @wilson/calendar-agent start &
-pnpm --filter @wilson/mail-agent start &
-pnpm --filter @wilson/orchestrator start &
-pnpm --filter @wilson/admin-api start &
-pnpm --filter @wilson/telegram-bot start &
-```
+| Command | What it does |
+|---------|----------------|
+| `pnpm run prod:build` | `turbo run build` (all apps and packages) |
+| `pnpm run prod:migrate` | `prisma migrate deploy` |
+| `pnpm run prod:seed` | Run `prisma/seed.ts` (demo data) |
+| `pnpm run prod:start` | Start every Nest app with **`node dist/main.js`** from each app directory |
+| `pnpm run prod:stop` | Stop tracked processes (SIGTERM, then SIGKILL if needed) |
+| `pnpm run prod:restart` | Stop then start |
+| `pnpm run prod:status` | Show `.wilson/run/*.pid` and whether each PID is alive |
+| `pnpm run prod:health` | HTTP checks on default health URLs (see below) |
 
-**Recommended:** **systemd** (one unit per service) or **PM2** so processes restart on failure and survive SSH disconnect. Set `WorkingDirectory` to the repo root, `EnvironmentFile=/opt/wilson/.env`, and `ExecStart` such as `/usr/bin/pnpm --filter @wilson/orchestrator start`. Use a **non-root** user, `Restart=on-failure`, and raise `LimitNOFILE` if needed.
+You can also run `bash ops/wilson.sh <start|stop|restart|status|health|help>` from the repo root.
+
+**Environment:** the script **`source`s `.env`** from the repo root and sets `NODE_ENV=production` when unset.
+
+**State:** PID files under **`.wilson/run/`** and logs under **`.wilson/logs/`** (both gitignored). **Start order:** task-agent (3011) → calendar-agent (3012) → mail-agent (3013) → orchestrator (3020) → admin-api (3000) → telegram-bot.
+
+**Safe re-runs:** `prod:start` skips a service if its pid file still points to a **live** process. If a **port** is already taken by something else, start fails with an explicit message (use `prod:stop` or free the port).
+
+**Telegram bot:** If **`TELEGRAM_BOT_TOKEN`** is set, the bot uses **long polling** and does not rely on the dev HTTP server; `prod:health` **skips** the Telegram HTTP check and suggests `prod:status`. If the token is **unset**, the dev simulator may listen on **3030** (override with **`TELEGRAM_BOT_DEV_PORT`**); `prod:health` checks `http://127.0.0.1:<port>/health` in that case.
+
+**Health checks (`prod:health`):** agents and admin-api use `/health`; orchestrator uses `/api/health`. Respect **`ADMIN_API_PORT`**, **`ORCHESTRATOR_PORT`**, and **`TELEGRAM_BOT_DEV_PORT`** if you override defaults in `.env`.
+
+**Next step for hardening:** map the same **`dist/main.js`** entrypoints to **systemd** units (or another supervisor) with `WorkingDirectory` per app, `EnvironmentFile=` pointing at `.env`, and `Restart=on-failure` — the scripts above are a deliberate stepping-stone toward that layout.
 
 ### 7. Reverse proxy and TLS
 
 Put **nginx** or **Caddy** in front of admin-api and/or orchestrator if you expose HTTP APIs to browsers or external tools. Terminate TLS at the proxy; keep Nest apps on loopback ports. The Telegram bot does not need an inbound HTTP port from the internet for **long polling**; allow **outbound HTTPS** to `api.telegram.org`.
 
 ### 8. Verify deployment
+
+```bash
+pnpm run prod:health
+```
+
+Or spot-check Swagger (if exposed):
 
 ```bash
 curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3020/api/docs
@@ -309,7 +329,8 @@ git pull
 pnpm install --frozen-lockfile
 pnpm run build
 pnpm prisma:migrate:deploy
-# Restart systemd units or pm2
+pnpm run prod:restart
+# or: restart individual systemd units / pm2 processes if you use those instead
 ```
 
 Back up `.env` and the database before migrations.

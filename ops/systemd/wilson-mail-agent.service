@@ -1,0 +1,19 @@
+[Unit]
+Description=Wilson mail agent
+PartOf=wilson.target
+After=network-online.target wilson-orchestrator.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/wilson
+EnvironmentFile=/etc/wilson.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node apps/mail-agent/dist/main.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=wilson.target

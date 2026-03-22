@@ -1,2 +1,5 @@
 # Markdown must stay UTF-8 text (not UTF-16) so Git/GitHub render diffs and previews correctly.
 *.md text
+
+# Ops scripts run on Linux; enforce LF.
+ops/** text eol=lf

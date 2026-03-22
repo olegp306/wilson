@@ -1,8 +1,10 @@
 {
+  // Base TS defaults for Wilson: emit CommonJS so Node `require()` and NestJS work at runtime.
+  // Internal packages use package.json "exports" with "require" -> ./dist/index.js.
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "CommonJS",
+    "moduleResolution": "node",
     "lib": ["ES2022"],
     "strict": true,
     "skipLibCheck": true,

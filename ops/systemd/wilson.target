@@ -1,0 +1,13 @@
+[Unit]
+Description=Wilson platform (all NestJS services)
+Wants=network-online.target
+Wants=wilson-orchestrator.service
+Wants=wilson-admin-api.service
+Wants=wilson-mail-agent.service
+Wants=wilson-task-agent.service
+Wants=wilson-calendar-agent.service
+Wants=wilson-telegram-bot.service
+After=network-online.target
+
+[Install]
+WantedBy=multi-user.target

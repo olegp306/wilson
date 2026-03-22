@@ -1,5 +1,6 @@
 node_modules
 dist
+.wilson/
 .turbo
 *.tsbuildinfo
 .env
