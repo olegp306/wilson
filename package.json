@@ -1,0 +1,53 @@
+{
+  "name": "wilson",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "postinstall": "prisma generate",
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "eslint \"apps/**/src/**/*.ts\" \"packages/**/src/**/*.ts\" \"infra/scripts/**/*.ts\" \"tests/**/*.ts\" \"prisma/**/*.ts\" \"vitest.config.ts\" --max-warnings 0",
+    "test": "prisma generate && vitest run",
+    "test:with-build": "pnpm run build && vitest run",
+    "test:unit": "vitest run",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\"",
+    "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:seed": "tsx prisma/seed.ts",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:push": "prisma db push",
+    "simulate:flows": "tsx infra/scripts/simulate-telegram-flows.ts",
+    "demo:telegram": "tsx infra/scripts/simulate-telegram-flows.ts",
+    "telegram:bot": "pnpm --filter @wilson/telegram-bot dev",
+    "test:mail:latest": "tsx infra/scripts/test-mail-latest.ts",
+    "clean": "turbo run clean && rimraf node_modules"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.2",
+    "@typescript-eslint/parser": "^8.18.2",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
+    "prisma": "^6.1.0",
+    "rimraf": "^6.0.1",
+    "tsx": "^4.19.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.2",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.1.0"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}
