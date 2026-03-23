@@ -165,6 +165,41 @@ All workspaces expose **`build`**, **`dev`**, and **`clean`** (`rimraf dist`). N
 | `pnpm test:mail:latest` | `GET /mail/latest` on mail-agent (headers from env) |
 | `pnpm run prod:build` … `pnpm run prod:health` | Production lifecycle on **Linux** (`ops/wilson.sh`): build, migrate, seed, start/stop/restart, status, health — see **Deploying on a remote Unix server** (section 6) |
 
+## OpenClaw install (Ubuntu)
+
+Use the installer script from this repository:
+
+`ash
+bash ops/openclaw/install.sh
+`
+
+The script installs Docker Engine + Compose plugin, creates /srv/openclaw/{app,config,workspace}, clones OpenClaw, and exports OPENCLAW_CONFIG_DIR / OPENCLAW_WORKSPACE_DIR.
+
+After script completion:
+
+`ash
+# 1) Re-login to apply docker group
+exit
+ssh <user>@<server-ip>
+
+# 2) Build and onboard
+cd /srv/openclaw/app
+docker build -t openclaw:local -f Dockerfile .
+docker compose run --rm openclaw-cli onboard
+
+# 3) Start gateway and verify health
+docker compose up -d openclaw-gateway
+curl http://127.0.0.1:18789/healthz
+`
+
+To open UI securely from your workstation, use SSH tunnel:
+
+`ash
+ssh -N -L 18789:127.0.0.1:18789 <user>@<server-ip>
+`
+
+Then open http://127.0.0.1:18789/#token=YOUR_TOKEN locally.
+
 ## Deploying on a remote Unix server
 
 Use this when Wilson runs on a **Linux or other Unix-like host** (VPS, bare metal, or a container host) that you reach over SSH. Commands below assume a **POSIX shell**; always verify which shell and terminal you are using.
@@ -348,6 +383,7 @@ Back up `.env` and the database before migrations.
 - [docs/stage-3.md](docs/stage-3.md) — Stage 3 integrations, setup, limitations, security  
 - [docs/stage-2-notes.md](docs/stage-2-notes.md) — earlier stage notes  
 - [docs/decisions.md](docs/decisions.md), [docs/integration-readiness.md](docs/integration-readiness.md)
+- [ops/openclaw/INTEGRATION.md](ops/openclaw/INTEGRATION.md) — OpenClaw integration with Wilson orchestrator and helper script
 
 ## Next stage (ideas)
 
